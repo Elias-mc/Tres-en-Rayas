@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tres en Raya</title>
+
+    <script type="module">
+      import { io } from 'https://cdn.socket.io/4.3.2/socket.io.esm.min.js';
+
+      const socket = io();
+
+      //login
+      const setup = document.getElementById('setup');
+      const usernameInput = document.getElementById('username');
+      const roomInput = document.getElementById('roomInput');
+      const createBtn = document.getElementById('createBtn');
+      const joinBtn = document.getElementById('joinBtn');
+      const roomText = document.getElementById('roomText');
+
+      //tres en rayas
+      const game = document.getElementById('game'); //Extraer el game para activar pantalla
+      const board = document.getElementById('board'); //Extraer el board para las casillas
+      const turnText = document.getElementById('turn'); //Extraer el turn para los turnos
+      const codeText = document.getElementById('code');
+      const btReset = document.getElementById('reset');
+
+      let roomCode = '';
+      let symbol = '';
+      let myTurno = false;
+      let gameState = Array(9).fill(null);
+
+      // btReset.addEventListener('click', () => {
+      //   socket.emit('reset game', {
+      //     roomCode,
+      //   });
+      // });
+      // //Creamos las celdas dentro del board
+      function casillas() {
+        board.innerHTML = '';
+
+        gameState.forEach((value, i) => {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.textContent = value || '';
+
+          cell.addEventListener('click', () => {
+            if (!myTurno || gameState[i]) return;
+
+            socket.emit('move', {
+              index: i,
+              roomCode,
+            });
+          });
+
+          board.appendChild(cell);
+        });
+      }
+
+      // CREAR SALA Y Se Une
+      createBtn.addEventListener('click', () => {
+        const username = usernameInput.value.trim();
+
+        if (!username) return;
+
+        socket.emit('create room', {
+          username,
+        });
+      });
+
+      // UNIRSE
+      joinBtn.addEventListener('click', () => {
+        const username = usernameInput.value.trim();
+
+        const code = roomInput.value.trim().toUpperCase();
+
+        if (!username || !code) return;
+
+        socket.emit('join room', {
+          username,
+          roomCode: code,
+        });
+      });
+
+      // SALA CREADA
+      socket.on('room created', (code) => {
+        roomCode = code;
+        codeText.textContent = 'SALA: ' + roomCode;
+        setup.style.display = 'none';
+        game.style.display = 'block';
+        casillas();
+      });
+
+      // PARTIDA INICIADA
+      socket.on('start game', () => {
+        resultText.textContent = '';
+      });
+
+      // ERROR
+      socket.on('room error', (msg) => {
+        alert(msg);
+      });
+
+      //SIMBOLOS
+      socket.on('game symbol', (s) => {
+        symbol = s;
+      });
+
+      // ACTUALIZAR JUEGO
+      socket.on('game update', (data) => {
+        gameState = data.board;
+
+        turnText.textContent = 'Turno: ' + data.turn;
+
+        myTurno = data.turn === symbol;
+
+        casillas();
+      });
+
+      // GANADOR
+      socket.on('game winner', (winner) => {
+        if (winner === symbol) {
+          turnText.textContent = 'GANASTE 🎉';
+        } else {
+          turnText.textContent = 'PERDISTE 😢';
+        }
+
+        myTurno = false;
+        // btReset.style.display = 'flex';
+      });
+
+      // EMPATE
+      socket.on('game draw', () => {
+        turnText.textContent = 'EMPATE 🤝';
+        myTurno = false;
+        // btReset.style.display = 'flex';
+      });
+    </script>
+
+    <style>
+      :root {
+        --primari: #936b327c;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui;
+        background: #1a1919;
+        color: #fff;
+        display: grid;
+        place-content: center;
+        height: 100vh;
+      }
+
+      #setup {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        width: 300px;
+      }
+      .btncon {
+        display: flex;
+        flex-direction: row;
+      }
+      #username,
+      #roomInput {
+        background: var(--primari);
+        border-radius: 10px 0px 0px 10px;
+        color: #e7e2e2;
+      }
+
+      input,
+      button {
+        padding: 12px;
+        border: 2px solid #fff;
+      }
+
+      button {
+        background: rgba(46, 39, 25, 0.61);
+        color: white;
+        cursor: pointer;
+        border-radius: 0px 10px 10px 0px;
+      }
+
+      #game {
+        display: none;
+        text-align: center;
+      }
+
+      #board {
+        display: grid;
+        grid-template-columns: repeat(3, 80px);
+        grid-template-rows: repeat(3, 80px);
+        gap: 5px;
+        margin-top: 20px;
+      }
+
+      .cell {
+        background: var(--primari);
+        border: #fff 2px solid;
+        display: grid;
+        place-content: center;
+        font-size: 2rem;
+        cursor: pointer;
+        border-radius: 10px;
+      }
+
+      #reset {
+        border: #fff 2px solid;
+        border-radius: 10px;
+        margin-top: 20px;
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <section id="setup">
+      <h1>Tres en rayas</h1>
+      <div class="btncon">
+        <input type="text" id="username" placeholder="Tu nombre" />
+
+        <button id="createBtn">Crear Sala</button>
+      </div>
+      <div class="btncon">
+        <input type="text" id="roomInput" placeholder="Código de sala" />
+
+        <button id="joinBtn">Unirse a Sala</button>
+      </div>
+    </section>
+
+    <section id="game" style="display: none">
+      <h2 id="turn">Turno: X</h2>
+      <h3 id="code">SALA</h3>
+      <div id="board"></div>
+      <button id="reset">Resetear</button>
+    </section>
+  </body>
+</html>
