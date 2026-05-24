@@ -2,7 +2,8 @@
 
 <div align="center">
 
-![Tres en Raya Preview](./assets/preview.png)
+<img width="1735" height="801" alt="image" src="https://github.com/user-attachments/assets/529b4c84-42c2-4d2b-bfce-50f32df6aa16" />
+
 
 **Juego de Tres en Raya (Tic-Tac-Toe) multijugador online construido con Node.js + Socket.io**
 
